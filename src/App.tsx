@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import Fallback from "./components/map/Fallback";
-import Map from "./components/map/Map";
+import Fallback from "./components/Map/Fallback";
+import Map from "./components/Map";
 
 function App() {
   const apiKey = useMemo(() => import.meta.env.VITE_API_KEY, []);

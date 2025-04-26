@@ -1,34 +1,58 @@
-import React, { useEffect, useRef } from "react";
-import Marker from "../Marker";
+import { useCallback } from "react";
+import Marker from "./InterestMarker";
 import { useMap } from "@vis.gl/react-google-maps";
-import { MarkerClusterer } from "@googlemaps/markerclusterer";
-import type { Marker as GoogleMarker } from "@googlemaps/markerclusterer";
+import { useSupercluster } from "@/hooks/useSuperCluster";
+import { LocationFeatureProps, locationsGeojson } from "@/consts/locations";
+import Supercluster, { ClusterProperties } from "supercluster";
+import ClusterMarker from "./ClusterMarker";
 
-type Props = {
-  locations: Poi[];
-  markers: { [key: string]: GoogleMarker };
-  setMarkers: React.Dispatch<
-    React.SetStateAction<{ [key: string]: GoogleMarker }>
-  >;
-};
+type ClusterFeature = Supercluster.ClusterFeature<ClusterProperties>;
+type PointFeature = Supercluster.PointFeature<LocationFeatureProps>;
+type MapFeature = ClusterFeature | PointFeature;
 
-export default function Markers({ locations, markers, setMarkers }: Props) {
-  const clusterer = useRef<MarkerClusterer | null>(null);
+export default function Markers() {
+  const { clusters, getClusterExpansionZoom } =
+    useSupercluster<LocationFeatureProps>(locationsGeojson, {
+      radius: 75,
+      maxZoom: 20,
+      minZoom: 0,
+      minPoints: 2,
+    });
 
   const map = useMap();
 
-  useEffect(() => {
-    if (!map) return;
-    if (!clusterer.current) {
-      clusterer.current = new MarkerClusterer({ map });
-    }
-  }, [map]);
+  const onClusterClick = useCallback(
+    (markerPosition: { lat: number; lng: number }, clusterId: number) => {
+      const zoom = getClusterExpansionZoom(clusterId);
+      if (!map || !zoom) return;
+      map.moveCamera({
+        center: markerPosition,
+        zoom: zoom,
+      });
+    },
+    [map]
+  );
 
-  useEffect(() => {
-    clusterer.current?.clearMarkers();
-    clusterer.current?.addMarkers(Object.values(markers));
-  }, [markers]);
-  return locations.map((poi) => (
-    <Marker key={poi.key} poi={poi} markers={markers} setMarkers={setMarkers} />
-  ));
+  const isCluster = useCallback(
+    (
+      properties: ClusterProperties | LocationFeatureProps
+    ): properties is ClusterProperties => {
+      return "cluster" in properties && properties.cluster === true;
+    },
+    []
+  );
+
+  return clusters.map((feature: MapFeature) => {
+    if (isCluster(feature.properties)) {
+      return (
+        <ClusterMarker
+          {...(feature as ClusterFeature)}
+          key={feature.id}
+          onClusterClick={onClusterClick}
+        />
+      );
+    }
+
+    return <Marker key={feature.id} {...(feature as PointFeature)} />;
+  });
 }

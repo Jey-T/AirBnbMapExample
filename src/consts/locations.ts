@@ -1,4 +1,6 @@
-export const LOCATIONS = [
+import { FeatureCollection, Point } from "geojson";
+
+const LOCATIONS = [
   {
     key: "operaHouse",
     name: "Sydney Opera House",
@@ -105,3 +107,21 @@ export const LOCATIONS = [
     location: { lat: -33.8605523, lng: 151.1972205 }
   }
 ]
+
+export type LocationFeatureProps = {
+  key: string;
+  name: string;
+  shortName: string;
+  description: string;
+};
+
+export type LocationsGeojson = FeatureCollection<Point, LocationFeatureProps>;
+
+export const locationsGeojson: LocationsGeojson = {
+  type: "FeatureCollection",
+  features: LOCATIONS.map(({ location, ...properties }) => ({
+    type: "Feature",
+    geometry: { type: "Point", coordinates: [location.lng, location.lat] },
+    properties
+  })),
+};
